@@ -46,9 +46,15 @@ jobs:
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Debug
+        run: |
+          echo "---"
+          echo $KONDUKTO_HOST 
+          echo $KONDUKTO_TOKEN 
+          echo "---"
+
       - name: Create Project
         run: |
-          env | grep -i kondukto \ 
           kdt create project \
           --repo-id $REPO_URL
           --alm-tool github \
