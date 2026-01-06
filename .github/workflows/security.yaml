@@ -125,7 +125,7 @@ jobs:
         run: |
           if [ -f "artifacts/sast/semgrep-results.json" ]; then
             kdt scan import \
-              -p "${REPO_URL}" \
+              --repo-id "${REPO_URL}" \
               -b "${{ steps.branch.outputs.branch }}" \
               -t semgrep \
               --file artifacts/sast/semgrep-results.json \
