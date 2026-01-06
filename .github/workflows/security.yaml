@@ -104,7 +104,7 @@ jobs:
 # ===========================================================================
   kdt-create:
     name: ASPM Onboard Project
-    needs: [sast-scan, secrets-scan]
+    needs: [sast-scan, secrets-scan, sca-scan]
     runs-on: ubuntu-latest
     env:
       KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
