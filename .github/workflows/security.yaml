@@ -58,4 +58,5 @@ jobs:
           kdt create project \
           --repo-id $REPO_URL
           --alm-tool github \
-          --product-name AutoGithub 
+          --product-name AutoGithub \
+          --insecure
