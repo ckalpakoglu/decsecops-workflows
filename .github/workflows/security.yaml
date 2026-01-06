@@ -46,13 +46,24 @@ jobs:
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Debug
-        run: |
-          echo "---"
-          echo $KONDUKTO_HOST 
-          echo $KONDUKTO_TOKEN 
-          echo "---"
+      #- name: Debug
+      #  run: |
+      #    echo "---"
+      #    echo $KONDUKTO_HOST 
+      #    echo $KONDUKTO_TOKEN 
+      #    echo "---"
 
       - name: Create Project
+        id: kdt-create
         run: |
           kdt create project --repo-id $REPO_URL --alm-tool github --product-name AutoGithub --insecure
+
+      - name: Run Semgrep 
+        id: semgrep 
+        run: |
+          pip install semgrep 
+          semgrep scan \
+            --config "p/default" \
+            --json
+            --output semgrep-results.json \
+            || true
