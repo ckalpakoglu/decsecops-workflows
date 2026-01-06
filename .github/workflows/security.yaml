@@ -121,6 +121,12 @@ jobs:
           name: sast-results
           path: artifacts/sast
 
+      - name: Download SCA results
+        uses: actions/download-artifact@v4
+        with:
+          name: sca-results
+          path: artifacts/sca
+
       - name: Install KDT CLI
         run: |
           curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
@@ -158,12 +164,11 @@ jobs:
       - name: Import SCA results (OSV)
         if: always()
         run: |
-          ls -R artifacts
-          if [ -f "artifacts/sca-results/osv-results.json" ]; then
+          if [ -f "artifacts/sca/osv-results.json" ]; then
             kdt scan \
               --repo-id "${REPO_URL}" \
               -b "${{ steps.branch.outputs.branch }}" \
               -t osvscannersca \
-              --file artifacts/sca-results/osv-results.json \
+              --file artifacts/sca/osv-results.json \
               --insecure || true
           fi
