@@ -180,7 +180,7 @@ jobs:
             kdt scan \
               --repo-id "${REPO_URL}" \
               -b "${{ steps.branch.outputs.branch }}" \
-              -t osvscannersca \
-              --file artifacts/sca/trufflehog-results.json \
+              -t trufflehog \
+              --file artifacts/secret/trufflehog-results.json \
               --insecure || true
           fi
