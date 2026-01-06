@@ -55,12 +55,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run TruffleHog
         run: |
           docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
@@ -127,6 +121,12 @@ jobs:
           name: sca-results
           path: artifacts/sca
 
+      - name: Download Secret results
+        uses: actions/download-artifact@v4
+        with:
+          name: secret-results
+          path: artifacts/secret
+
       - name: Install KDT CLI
         run: |
           curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
@@ -170,5 +170,17 @@ jobs:
               -b "${{ steps.branch.outputs.branch }}" \
               -t osvscannersca \
               --file artifacts/sca/osv-results.json \
+              --insecure || true
+          fi
+
+      - name: Import Secret results (TruffleHog)
+        if: always()
+        run: |
+          if [ -f "artifacts/secret/trufflehog-results.json" ]; then
+            kdt scan \
+              --repo-id "${REPO_URL}" \
+              -b "${{ steps.branch.outputs.branch }}" \
+              -t osvscannersca \
+              --file artifacts/sca/trufflehog-results.json \
               --insecure || true
           fi
