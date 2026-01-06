@@ -77,7 +77,30 @@ jobs:
           retention-days: 7
 
 # ===========================================================================
-# Stage 3: ASPM Project Onboarding
+# Stage 3: SCA / Dependency Scanning
+# ===========================================================================
+  sca-scan:
+    name: 📦 Dependency Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OSV Scanner
+        run: |
+          curl -sSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          ./osv-scanner --format json . > osv-results.json 2>/dev/null || true
+
+      - name: Upload SCA results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-results
+          path: |
+            osv-results.json
+          retention-days: 7
+
+# ===========================================================================
+# Stage 4: ASPM Project Onboarding
 # ===========================================================================
   kdt-create:
     name: ASPM Onboard Project
@@ -131,3 +154,16 @@ jobs:
               --file artifacts/sast/semgrep-results.json \
               --insecure || true
           fi
+
+      - name: Import SCA results (OSV)
+        if: always()
+        run: |
+          if [ -f "artifacts/sca-results/osv-results.json" ]; then
+            kdt scan import \
+              --repo-id "${REPO_URL}" \
+              -b "${{ steps.branch.outputs.branch }}" \
+              -t semgrep \
+              --file artifacts/sca-results/osv-results.json \
+              --insecure || true
+          fi
+
