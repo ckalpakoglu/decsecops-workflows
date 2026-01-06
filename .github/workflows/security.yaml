@@ -3,23 +3,41 @@ name: Invicti ASPM Workflow
 on:
   push:
     branches: [main, develop]
+
   pull_request:
     branches: [main]
+
   workflow_dispatch:
     inputs:
       host:
         description: 'ASPM host'
         type: string
-        default: https://appsecsanta.invicti.com
+        default: "https://appsecsanta.invicti.com"
+
       skip_gate:
         description: 'Skip security gate (emergency only)'
         type: boolean
         default: false
-      async:
+
+      async_mode:
         description: 'Run scans/imports asynchronously'
         type: boolean
         default: false
+
   workflow_call:
+    inputs:
+      host:
+        type: string
+        default: "https://appsecsanta.invicti.com"
+
+      skip_gate:
+        type: boolean
+        default: false
+
+      async_mode:
+        type: boolean
+        default: false
+
     secrets:
       KONDUKTO_TOKEN:
         required: true
