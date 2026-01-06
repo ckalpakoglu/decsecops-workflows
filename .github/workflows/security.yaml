@@ -20,18 +20,23 @@ jobs:
 # ===========================================================================
 # Stage 1: SAST Scans
 # ===========================================================================
-sast-scan:
-  name: SAST Analysis
-  runs-on: ubuntu-latest
-      - name: Run Semgrep 
-        id: semgrep 
+  sast-scan:
+    name: 🔍 SAST Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        id: semgrep
         run: |
-          pip install semgrep 
+          pip install semgrep
           semgrep scan \
             --config "p/default" \
-            --json
+            --config "p/security-audit" \
+            --config "p/secrets" \
+            --json \
             --output semgrep-results.json \
-            || true
+            . || true
 
       - name: Upload SAST results
         uses: actions/upload-artifact@v4
@@ -39,40 +44,36 @@ sast-scan:
           name: sast-results
           path: semgrep-results.json
           retention-days: 7
+    secrets-scan:
+      name: 🔐 Secret Detection
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
 
-  # ===========================================================================
-  # Stage 2: Secret Scanning
-  # ===========================================================================
-  secrets-scan:
-    name: 🔐 Secret Detection
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        - name: Run Gitleaks
+          uses: gitleaks/gitleaks-action@v2
+          continue-on-error: true
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run TruffleHog
-        id: trufflehog
-        run: |
-          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
+        - name: Run TruffleHog
+          id: trufflehog
+          run: |
+            docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
             filesystem /pwd \
             --json \
             --only-verified \
             > trufflehog-results.json 2>/dev/null || true
 
-      - name: Upload secret scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: secrets-results
-          path: |
-            trufflehog-results.json
-          retention-days: 7
+        - name: Upload secret scan results
+          uses: actions/upload-artifact@v4
+          with:
+            name: secrets-results
+            path: |
+              trufflehog-results.json
+            retention-days: 7
 
 # ===========================================================================
 # Stage 3: Project Onboarding 
