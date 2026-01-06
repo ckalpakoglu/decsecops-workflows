@@ -11,7 +11,10 @@ on:
         description: 'Skip security gate (emergency only)'
         type: boolean
         default: false
-
+  workflow_call:
+    secrets:
+      KONDUKTO_TOKEN:
+        required: true
 env:
   KONDUKTO_HOST: https://appsecsanta.invicti.com
   PROJECT_NAME: ${{ github.event.repository.name }}
