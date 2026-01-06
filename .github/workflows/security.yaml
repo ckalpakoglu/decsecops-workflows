@@ -45,7 +45,6 @@ jobs:
           fi
 
       - name: Create Project
-        id: branch
         run: |
           kdt create project \
           --repo-id $REPO_URL
