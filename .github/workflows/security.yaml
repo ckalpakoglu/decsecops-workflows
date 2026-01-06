@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  workflow_dispatch: 
+  workflow_dispatch:
     inputs:
       skip_gate:
         description: 'Skip security gate (emergency only)'
@@ -27,7 +27,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Semgrep
-        id: semgrep
         run: |
           pip install semgrep
           semgrep scan \
@@ -44,79 +43,91 @@ jobs:
           name: sast-results
           path: semgrep-results.json
           retention-days: 7
-    secrets-scan:
-      name: 🔐 Secret Detection
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-          with:
-            fetch-depth: 0
 
-        - name: Run Gitleaks
-          uses: gitleaks/gitleaks-action@v2
-          continue-on-error: true
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# ===========================================================================
+# Stage 2: Secret Scans
+# ===========================================================================
+  secrets-scan:
+    name: 🔐 Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        - name: Run TruffleHog
-          id: trufflehog
-          run: |
-            docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TruffleHog
+        run: |
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
             filesystem /pwd \
             --json \
             --only-verified \
             > trufflehog-results.json 2>/dev/null || true
 
-        - name: Upload secret scan results
-          uses: actions/upload-artifact@v4
-          with:
-            name: secrets-results
-            path: |
-              trufflehog-results.json
-            retention-days: 7
+      - name: Upload secret scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: secrets-results
+          path: trufflehog-results.json
+          retention-days: 7
 
 # ===========================================================================
-# Stage 3: Project Onboarding 
+# Stage 3: ASPM Project Onboarding
 # ===========================================================================
-kdt-create:
-  name: ASPM Onboard Project
-  needs: [secrets-scan, sast-scan]
-  runs-on: ubuntu-latest
-  env:
-    KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
-    KONDUKTO_HOST: https://appsecsanta.invicti.com
-    PROJECT_NAME: ${{ github.event.repository.name }}
-    REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+  kdt-create:
+    name: ASPM Onboard Project
+    needs: [sast-scan, secrets-scan]
+    runs-on: ubuntu-latest
+    env:
+      KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
+      KONDUKTO_HOST: https://appsecsanta.invicti.com
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      REPO_URL: ${{ github.server_url }}/${{ github.repository }}
 
-  steps:
-    - name: Install KDT CLI
-      run: |
-        curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
-        kdt version
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Determine branch
-      id: branch
-      run: |
-        if [ "${{ github.event_name }}" == "pull_request" ]; then
-          echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-        else
-          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-        fi
+      - name: Download SAST results
+        uses: actions/download-artifact@v4
+        with:
+          name: sast-results
+          path: artifacts/sast
 
-    - name: Create Project
-      id: kdt-create
-      run: |
-        kdt create project --repo-id "${{ env.REPO_URL }}" --alm-tool github --product-name AutoGithub --insecure || true
+      - name: Install KDT CLI
+        run: |
+          curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
+          kdt version
 
-    - name: Import SAST results (semgrep)
-      if: always()
-      run: |
-        if [ -f "scan-results/sast-results/semgrep-results.json" ]; then
-            echo "Importing Semgrep results..."
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "branch=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Project
+        run: |
+          kdt create project \
+            --repo-id "${REPO_URL}" \
+            --alm-tool github \
+            --product-name AutoGithub \
+            --insecure || true
+
+      - name: Import SAST results (Semgrep)
+        if: always()
+        run: |
+          if [ -f "artifacts/sast/semgrep-results.json" ]; then
             kdt scan import \
-              -p "${{ env.REPO_URL }}" \
+              -p "${REPO_URL}" \
               -b "${{ steps.branch.outputs.branch }}" \
               -t semgrep \
-              --insecure \
-              --file scan-results/sast-results/semgrep-results.json || true
-        fi
+              --file artifacts/sast/semgrep-results.json \
+              --insecure || true
+          fi
