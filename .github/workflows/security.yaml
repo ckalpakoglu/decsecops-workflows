@@ -158,6 +158,7 @@ jobs:
       - name: Import SCA results (OSV)
         if: always()
         run: |
+          ls -R artifacts
           if [ -f "artifacts/sca-results/osv-results.json" ]; then
             kdt scan \
               --repo-id "${REPO_URL}" \
@@ -166,4 +167,3 @@ jobs:
               --file artifacts/sca-results/osv-results.json \
               --insecure || true
           fi
-
