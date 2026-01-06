@@ -55,4 +55,4 @@ jobs:
 
       - name: Create Project
         run: |
-          kdt create project --repo-id https://github.com/ckalpakoglu/govwa --alm-tool github --product-name AutoGithub 
+          kdt create project --repo-id https://github.com/ckalpakoglu/govwa --alm-tool github --product-name AutoGithub --insecure
