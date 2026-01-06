@@ -13,7 +13,7 @@ on:
         default: false
 
 env:
-  KONDUKTO_HOST: https://app.kondukto.io
+  KONDUKTO_HOST: https://appsecsanta.invicti.com
   PROJECT_NAME: ${{ github.event.repository.name }}
 
 jobs:
