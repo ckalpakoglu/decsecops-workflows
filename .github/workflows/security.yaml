@@ -11,6 +11,11 @@ on:
         description: 'Skip security gate (emergency only)'
         type: boolean
         default: false
+      async:
+        description: 'Run scans/imports asynchronously'
+        type: boolean
+        default: false
+
   workflow_call:
     secrets:
       KONDUKTO_TOKEN:
