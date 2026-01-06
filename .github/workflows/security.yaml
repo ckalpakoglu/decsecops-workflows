@@ -15,10 +15,6 @@ on:
     secrets:
       KONDUKTO_TOKEN:
         required: true
-env:
-  KONDUKTO_HOST: https://appsecsanta.invicti.com
-  PROJECT_NAME: ${{ github.event.repository.name }}
-  REPO_URL: ${{ github.server_url}}/${{ github.repository }}
 
 jobs:
   # ===========================================================================
@@ -27,6 +23,12 @@ jobs:
   kdt-create:
     name: ASPM Onboard Project
     runs-on: ubuntu-latest
+    env:
+      KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
+      KONDUKTO_HOST: https://appsecsanta.invicti.com
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+      
     steps:
       - uses: actions/checkout@v4
 
