@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      host:
+        description: 'ASPM host'
+        type: string
+        default: https://appsecsanta.invicti.com
       skip_gate:
         description: 'Skip security gate (emergency only)'
         type: boolean
@@ -15,7 +19,6 @@ on:
         description: 'Run scans/imports asynchronously'
         type: boolean
         default: false
-
   workflow_call:
     secrets:
       KONDUKTO_TOKEN:
@@ -107,7 +110,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
-      KONDUKTO_HOST: https://appsecsanta.invicti.com
+      KONDUKTO_HOST: ${{ inputs.host }}
+      #KONDUKTO_HOST: https://appsecsanta.invicti.com
       PROJECT_NAME: ${{ github.event.repository.name }}
       REPO_URL: ${{ github.server_url }}/${{ github.repository }}
 
