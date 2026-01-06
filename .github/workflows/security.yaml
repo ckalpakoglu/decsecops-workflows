@@ -17,47 +17,12 @@ on:
         required: true
 
 jobs:
-  # ===========================================================================
-  # Stage 1: Project Onboarding
-  # ===========================================================================
-  kdt-create:
-    name: ASPM Onboard Project
-    runs-on: ubuntu-latest
-    env:
-      KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
-      KONDUKTO_HOST: https://appsecsanta.invicti.com
-      PROJECT_NAME: ${{ github.event.repository.name }}
-      REPO_URL: ${{ github.server_url }}/${{ github.repository }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install KDT CLI
-        run: |
-          curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
-          kdt version
-
-      - name: Determine branch
-        id: branch
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-          else
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
-      #- name: Debug
-      #  run: |
-      #    echo "---"
-      #    echo $KONDUKTO_HOST 
-      #    echo $KONDUKTO_TOKEN 
-      #    echo "---"
-
-      - name: Create Project
-        id: kdt-create
-        run: |
-          kdt create project --repo-id $REPO_URL --alm-tool github --product-name AutoGithub --insecure
-
+# ===========================================================================
+# Stage 1: SAST Scans
+# ===========================================================================
+sast-scan:
+  name: SAST Analysis
+  runs-on: ubuntu-latest
       - name: Run Semgrep 
         id: semgrep 
         run: |
@@ -67,3 +32,90 @@ jobs:
             --json
             --output semgrep-results.json \
             || true
+
+      - name: Upload SAST results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-results
+          path: semgrep-results.json
+          retention-days: 7
+
+  # ===========================================================================
+  # Stage 2: Secret Scanning
+  # ===========================================================================
+  secrets-scan:
+    name: 🔐 Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TruffleHog
+        id: trufflehog
+        run: |
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest \
+            filesystem /pwd \
+            --json \
+            --only-verified \
+            > trufflehog-results.json 2>/dev/null || true
+
+      - name: Upload secret scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: secrets-results
+          path: |
+            trufflehog-results.json
+          retention-days: 7
+
+# ===========================================================================
+# Stage 3: Project Onboarding 
+# ===========================================================================
+kdt-create:
+  name: ASPM Onboard Project
+  needs: [secrets-scan, sast-scan]
+  runs-on: ubuntu-latest
+  env:
+    KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
+    KONDUKTO_HOST: https://appsecsanta.invicti.com
+    PROJECT_NAME: ${{ github.event.repository.name }}
+    REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+
+  steps:
+    - name: Install KDT CLI
+      run: |
+        curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
+        kdt version
+
+    - name: Determine branch
+      id: branch
+      run: |
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+        else
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Project
+      id: kdt-create
+      run: |
+        kdt create project --repo-id "${{ env.REPO_URL }}" --alm-tool github --product-name AutoGithub --insecure || true
+
+    - name: Import SAST results (semgrep)
+      if: always()
+      run: |
+        if [ -f "scan-results/sast-results/semgrep-results.json" ]; then
+            echo "Importing Semgrep results..."
+            kdt scan import \
+              -p "${{ env.REPO_URL }}" \
+              -b "${{ steps.branch.outputs.branch }}" \
+              -t semgrep \
+              --insecure \
+              --file scan-results/sast-results/semgrep-results.json || true
+        fi
