@@ -1,1 +1,41 @@
+name: Invicti ASPM Workflow
 
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: 
+    inputs:
+      skip_gate:
+        description: 'Skip security gate (emergency only)'
+        type: boolean
+        default: false
+
+env:
+  KONDUKTO_HOST: https://app.kondukto.io
+  PROJECT_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  # ===========================================================================
+  # Stage 1: Project Onboarding
+  # ===========================================================================
+  kdt-create:
+    name: ASPM Onboard Project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install KDT CLI
+        run: |
+          curl -sSL https://raw.githubusercontent.com/kondukto-io/kdt/master/get.sh | bash
+          kdt version
+
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
