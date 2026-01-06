@@ -18,6 +18,7 @@ on:
 env:
   KONDUKTO_HOST: https://appsecsanta.invicti.com
   PROJECT_NAME: ${{ github.event.repository.name }}
+  REPO_URL: ${{ github.server_url}}/${{ github.repository }}
 
 jobs:
   # ===========================================================================
@@ -42,3 +43,11 @@ jobs:
           else
             echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Create Project
+        id: branch
+        run: |
+          kdt create project \
+          --repo-id $REPO_URL
+          --alm-tool github \
+          --product-name AutoGithub 
