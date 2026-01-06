@@ -28,7 +28,7 @@ jobs:
       KONDUKTO_HOST: https://appsecsanta.invicti.com
       PROJECT_NAME: ${{ github.event.repository.name }}
       REPO_URL: ${{ github.server_url }}/${{ github.repository }}
-      
+
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +48,7 @@ jobs:
 
       - name: Create Project
         run: |
+          env | grep -i kondukto \ 
           kdt create project \
           --repo-id $REPO_URL
           --alm-tool github \
