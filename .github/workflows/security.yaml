@@ -129,7 +129,6 @@ jobs:
     env:
       KONDUKTO_TOKEN: ${{ secrets.KONDUKTO_TOKEN }}
       KONDUKTO_HOST: ${{ inputs.host }}
-      #KONDUKTO_HOST: https://appsecsanta.invicti.com
       PROJECT_NAME: ${{ github.event.repository.name }}
       REPO_URL: ${{ github.server_url }}/${{ github.repository }}
 
@@ -170,6 +169,10 @@ jobs:
 
       - name: Create Project
         run: |
+          ARGS=""
+
+          [ "${{ inputs.async_mode }}" == "true"] && ARGS="$ARGS --async"
+
           kdt create project \
             --repo-id "${REPO_URL}" \
             --alm-tool github \
@@ -185,7 +188,8 @@ jobs:
               -b "${{ steps.branch.outputs.branch }}" \
               -t semgrep \
               --file artifacts/sast/semgrep-results.json \
-              --insecure || true
+              --insecure \
+              $ARGS || true
           fi
 
       - name: Import SCA results (OSV)
@@ -197,7 +201,8 @@ jobs:
               -b "${{ steps.branch.outputs.branch }}" \
               -t osvscannersca \
               --file artifacts/sca/osv-results.json \
-              --insecure || true
+              --insecure \
+              $ARGS || true
           fi
 
       - name: Import Secret results (TruffleHog)
@@ -209,5 +214,6 @@ jobs:
               -b "${{ steps.branch.outputs.branch }}" \
               -t trufflehog \
               --file artifacts/secret/trufflehog-results.json \
-              --insecure || true
+              --insecure \
+              $ARGS || true
           fi
