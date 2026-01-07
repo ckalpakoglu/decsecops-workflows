@@ -120,6 +120,28 @@ jobs:
           retention-days: 7
 
 # ===========================================================================
+# Stage 4: SBOM gen
+# ===========================================================================
+  sca-scan:
+    name: 📦 SBOM gen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM with cdxgen
+        run: |
+          docker run --rm -e CDXGEN_DEBUG_MODE=debug -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/cyclonedx/cdxgen:master -r /app -o /app/bom.json
+      
+      - name: Upload BOM results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bom-results
+          path: |
+            bom.json
+          retention-days: 7
+
+
+# ===========================================================================
 # Stage 4: ASPM Project Onboarding
 # ===========================================================================
   kdt-create:
@@ -152,6 +174,12 @@ jobs:
         with:
           name: secrets-results
           path: artifacts/secret
+
+      - name: Download BOM results
+        uses: actions/download-artifact@v4
+        with:
+          name: bom-results
+          path: artifacts/bom
 
       - name: Install KDT CLI
         run: |
@@ -214,6 +242,18 @@ jobs:
               -b "${{ steps.branch.outputs.branch }}" \
               -t trufflehog \
               --file artifacts/secret/trufflehog-results.json \
+              --insecure \
+              $ARGS || true
+          fi
+
+      - name: Import BOM results (Cdxgen)
+        if: always()
+        run: |
+          if [ -f "artifacts/bom/bom.json" ]; then
+            kdt sbom \
+              --repo-id "${REPO_URL}" \
+              -b "${{ steps.branch.outputs.branch }}" \
+              --file artifacts/bom/bom.json \
               --insecure \
               $ARGS || true
           fi
