@@ -247,11 +247,11 @@ jobs:
               $ARGS || true
           fi
 
-      - name: Import BOM results (Cdxgen)
+      - name: Import BOM results (Cylonedx)
         if: always()
         run: |
           if [ -f "artifacts/bom/bom.json" ]; then
-            kdt sbom \
+            kdt sbom import \
               --repo-id "${REPO_URL}" \
               -b "${{ steps.branch.outputs.branch }}" \
               --file artifacts/bom/bom.json \
