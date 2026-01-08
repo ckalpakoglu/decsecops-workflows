@@ -128,10 +128,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate SBOM with cdxgen
+      - name: Generate SBOM with Syft
         run: |
-          ls
-          docker run --rm -e CDXGEN_DEBUG_MODE=debug -v /tmp:/tmp -v "$PWD:/app:rw" -t ghcr.io/cyclonedx/cdxgen:master -r /app -o /app/bom.json
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft . -o cyclonedx-json > bom.json
       
       - name: Upload BOM results
         uses: actions/upload-artifact@v4
